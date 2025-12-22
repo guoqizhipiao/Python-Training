@@ -22,18 +22,35 @@
     <EnableUnmanagedDebugging>false</EnableUnmanagedDebugging>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="core\databasecode\database.py" />
+    <Compile Include="core\opencv.py" />
     <Compile Include="gui\maingui.py" />
     <Compile Include="main.py" />
     <Compile Include="测试\tcpfwd.py" />
     <Compile Include="测试\tcpkhd.py" />
+    <Compile Include="测试代码\tcpfwd.py" />
+    <Compile Include="测试代码\tcpkhd.py" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="core\" />
+    <Folder Include="core\databasecode\" />
     <Folder Include="gui\" />
+    <Folder Include="gui\__pycache__\" />
+    <Folder Include="photos\" />
     <Folder Include="测试\" />
+    <Folder Include="测试代码\" />
   </ItemGroup>
   <ItemGroup>
     <InterpreterReference Include="CondaEnv|CondaEnv|practical_training_env" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="core\databasecode\database.db" />
+    <Content Include="gui\__pycache__\maingui.cpython-37.pyc" />
+    <Content Include="gui\__pycache__\maingui.cpython-38.pyc" />
+    <Content Include="gui\__pycache__\maingui.cpython-39.pyc" />
+    <Content Include="photos\1900061298.jpg" />
+    <Content Include="requirements.txt" />
+    <Content Include="测试代码\ceshi.jpg" />
   </ItemGroup>
   <Import Project="$(MSBuildExtensionsPath32)\Microsoft\VisualStudio\v$(VisualStudioVersion)\Python Tools\Microsoft.PythonTools.targets" />
   <!-- Uncomment the CoreCompile target to enable the Build command in

@@ -16,6 +16,9 @@ class maingui:
         # 计算窗口左上角坐标，使其居中
         x = (screen_width - window_width) // 2
         y = (screen_height - window_height) // 2
+        # 设置窗口最小宽度为 400，最小高度为 300
+        root.minsize(400, 300)
+        #打开窗口，设置大小和位置
         root.geometry(f"{window_width}x{window_height}+{x}+{y}")
         # 进入主循环
         root.mainloop()

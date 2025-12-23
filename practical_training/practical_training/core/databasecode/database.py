@@ -4,8 +4,12 @@ import sqlite3
 import os
 #高级文件操作
 import shutil
-photo_path = r"practical_training\practical_training\photos"
-database_path = r"practical_training\practical_training\core\databasecode\database.db"
+
+
+# 获取当前脚本所在目录（绝对路径）
+databasecode_path = os.path.dirname(os.path.abspath(__file__))
+photo_path = os.path.join(databasecode_path, "students_photos")
+database_path = os.path.join(databasecode_path, "students.db")
 
 class database:
     #初始化
@@ -63,7 +67,55 @@ class database:
         except Exception as e:
             print(f"添加失败：{e}")
 
+    #生成器 逐行返回学生信息元组 (id_number, name, student_id, photo_path)
+    #注意一个生成器不能重置 只能新建一个生成器实例
+    def iter_show_students(self):
+        
+        try:
+            with sqlite3.connect(database_path) as con:
+                cur = con.cursor()
+                cur.execute('SELECT id_number, name, student_id, photo_path FROM students')
+                # 等价于 for row in cur: yield row
+                yield from cur
+        except Exception as e:
+            print(f"查询失败：{e}")
+            return
+
+    #生成器 按身份证号查询学生信息，返回学生信息元组
+    def iter_find_show_students_idnumber(self, id_number):
+        try:
+            with sqlite3.connect(database_path) as con:
+                cur = con.cursor()
+                cur.execute('SELECT id_number, name, student_id, photo_path FROM students WHERE id_number = ?', (id_number,))
+                yield from cur
+        except Exception as e:
+            print(f"查询失败：{e}")
+            return
+    #按身份证号查询学生信息，返回学生信息元组 或 None
+    def find_show_students_idnumber(self, id_number):
+        find_students = self.iter_find_show_students_idnumber(id_number)
+        return next(find_students, None)
+    
 if __name__ == "__main__":
+    core_path = os.path.dirname(databasecode_path)
+    practical_training_path = os.path.dirname(core_path)
+    testfolder_path = os.path.join(practical_training_path, "testfolder")
     da = database()
-    da.add_student("123456789012345678", "张三测试", "1900061298", r"practical_training\practical_training\测试代码\ceshi.jpg")
+    da.add_student("123456789012345678", "张三测试", "1900061298", os.path.join(testfolder_path, "cszp1.jpg"))
+    da.add_student("123456789012345679", "小美测试", "1900061299", os.path.join(testfolder_path, "cszp2.png"))
+    #print(os.path.dirname(databasecode_path), os.path.join(core_path, "testfolder"))
+    #print(os.path.join(testfolder_path, "cszp1.jpg"), os.path.join(testfolder_path, "cszp2.png"))
     print("完成")
+
+    for s1 in da.iter_show_students():
+        print(s1)
+    """s2 = da.iter_show_students()
+    s3 = da.iter_show_students()
+    print(next(s2))
+    print(next(s3))"""
+
+    f1 = da.find_show_students_idnumber("123456789012345677")
+    if f1:
+        print(f1)
+    else:
+        print("未找到该学生信息")

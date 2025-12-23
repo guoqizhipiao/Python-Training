@@ -134,6 +134,16 @@ class database:
             except Exception as e:
                 print(f"删除失败：{e}")
 
+    def get_student_count(self):
+        try:
+            with sqlite3.connect(database_path) as con:
+                cur = con.cursor()
+                cur.execute("SELECT COUNT(*) FROM students")
+                count = cur.fetchone()[0]
+                return count
+        except Exception as e:
+            print(f"获取个数失败：{e}")
+                
 
 if __name__ == "__main__":
     core_path = os.path.dirname(databasecode_path)
@@ -166,3 +176,9 @@ if __name__ == "__main__":
         print("未找到该学生信息")
 
     da.delete_student_idnumber("123456789012345677")
+
+    count = da.get_student_count()
+    if count != None:
+        print(f"有{count}个学生")
+    else:
+        print("获取学生个数失败")

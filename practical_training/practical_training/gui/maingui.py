@@ -1,7 +1,7 @@
 #主界面
 import tkinter as tk
 
-import databasegui
+from . import databasegui
 
 #主界面
 class maingui:
@@ -32,10 +32,9 @@ class maingui:
         self.root.mainloop()
 
     def database(self):
-        database_window = databasegui.databasegui()
+        database_window = databasegui.databasegui(self.root)
 
 
 
 if __name__ == "__main__":
     gui = maingui()
-    gui.open_top_window()

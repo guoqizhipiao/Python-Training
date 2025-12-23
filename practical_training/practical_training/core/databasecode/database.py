@@ -54,8 +54,10 @@ class database:
                 if cur.fetchone():
                     print("身份证号或学号已存在")
                     return
-                # 复制照片到指定目录
-                photo_filename = f"{student_id}.jpg"
+                #获取照片扩展名并命名为 学号.扩展名
+                original_ext = os.path.splitext(photo_source_path)[1].lower()
+                photo_filename = f"{student_id}{original_ext}"
+                #复制照片到指定目录
                 photo_dest_path = f"{photo_path}/{photo_filename}"
                 shutil.copy(photo_source_path, photo_dest_path)
                 # 插入学生信息到数据库
@@ -96,6 +98,43 @@ class database:
         find_students = self.iter_find_show_students_idnumber(id_number)
         return next(find_students, None)
     
+    #生成器 按学号查询学生信息，返回学生信息元组
+    def iter_find_show_students_studentid(self, student_id):
+        try:
+            with sqlite3.connect(database_path) as con:
+                cur = con.cursor()
+                cur.execute('SELECT id_number, name, student_id, photo_path FROM students WHERE student_id = ?', (student_id,))
+                yield from cur
+        except Exception as e:
+            print(f"查询失败：{e}")
+            return
+
+    #按学号查询学生信息，返回学生信息元组 或 None
+    def find_show_students_studentid(self, student_id):
+        find_students = self.iter_find_show_students_studentid(student_id)
+        return next(find_students, None)
+
+
+    def delete_student_idnumber(self, id_number):
+        student = self.find_show_students_idnumber(id_number)
+        if not student:
+            print("未找到该学生信息")
+            return
+        else:
+            try:
+                with sqlite3.connect(database_path) as con:
+                    cur = con.cursor()
+                    #删除学生照片文件
+                    photo_path = student[3]
+                    if os.path.isfile(photo_path):
+                        os.remove(photo_path)
+                    #从数据库中删除学生记录
+                    cur.execute('DELETE FROM students WHERE id_number = ?', (id_number,))
+                    print(f"学生 {student[1]} 信息删除成功")
+            except Exception as e:
+                print(f"删除失败：{e}")
+
+
 if __name__ == "__main__":
     core_path = os.path.dirname(databasecode_path)
     practical_training_path = os.path.dirname(core_path)
@@ -119,3 +158,11 @@ if __name__ == "__main__":
         print(f1)
     else:
         print("未找到该学生信息")
+
+    f2 = da.find_show_students_studentid("1900061297")
+    if f2:
+        print(f2)
+    else:
+        print("未找到该学生信息")
+
+    da.delete_student_idnumber("123456789012345677")

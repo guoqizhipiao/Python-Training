@@ -20,6 +20,7 @@ sys.path.append(practical_training_path)
 
 from core.facerecognition.facialrecognitiontext import facial_recognition_text
 
+#数据库类
 class database:
     #初始化
     def __init__(self):
@@ -27,7 +28,9 @@ class database:
         os.makedirs(os.path.dirname(database_path), exist_ok=True)
         #创建数据库连接
         con = sqlite3.connect(database_path)
+        #创建游标
         cur = con.cursor()
+        #创建学生信息表 如果不存在
         cur.execute('''
             CREATE TABLE IF NOT EXISTS students (
                 id INTEGER PRIMARY KEY AUTOINCREMENT, -- 主键int类型，自增长
@@ -35,7 +38,7 @@ class database:
                 name TEXT NOT NULL, -- 姓名文本类型
                 student_id TEXT NOT NULL UNIQUE, -- 学号文本类型，唯一
                 photo_path TEXT NOT NULL, -- 照片路径文本类型
-                face_encoding BLOB  -- 新增：存储128维特征向量的二进制数据
+                face_encoding BLOB  -- 存储特征向量的二进制数据
             )
         ''')
         #提交更改并关闭连接
@@ -53,37 +56,35 @@ class database:
             print("照片路径无效")
             return
         try:
+            #连接数据库
             with sqlite3.connect(database_path) as con:
-                #连接数据库
+                #创建游标
                 cur = con.cursor()
                 #检查身份证号或学号是否已存在
                 cur.execute('''
                     SELECT 1 FROM students 
                     WHERE id_number = ? OR student_id = ?
                 ''', (id_number, student_id))
-
                 if cur.fetchone():
                     print("身份证号或学号已存在")
                     return "REPEAT"
+
                 #提取人脸特征向量
                 encoding = facial_recognition_text(photo_source_path)
-
+                #如果没有检测到人脸
                 if encoding is None or encoding.size == 0:
                     print("没有检测到脸")
                     return "NOFACE"
-
+                #转换为二进制数据存储
                 embedding_blob = encoding.astype(np.float32).tobytes()
-
                 # 插入学生信息到数据库
                 cur.execute('''
                     INSERT INTO students (id_number, name, student_id, photo_path, face_encoding)
                     VALUES (?, ?, ?, ?, ?)
                 ''', (id_number, name, student_id, photo_source_path, embedding_blob))
-
-
+                #获取新插入学生的数据库ID
                 student_db_id = cur.lastrowid
-
-                #获取照片扩展名并命名为 学号.扩展名
+                #获取照片扩展名并命名为 id.扩展名
                 original_ext = os.path.splitext(photo_source_path)[1].lower()
                 photo_filename = f"{student_db_id}{original_ext}"
                 #复制照片到指定目录
@@ -93,7 +94,6 @@ class database:
                 cur.execute('''
                     UPDATE students SET photo_path = ? WHERE id = ?
                 ''', (photo_filename, student_db_id))
-
                 print(f"学生 {name} 信息添加成功")
                 return "SUCCESS"
         except Exception as e:
@@ -103,37 +103,63 @@ class database:
     #注意一个生成器不能重置 只能新建一个生成器实例
     def iter_show_students(self):
         try:
+            # 连接数据库
             with sqlite3.connect(database_path) as con:
+                # 创建游标
                 cur = con.cursor()
+                # 查询所有学生信息
                 cur.execute('SELECT id_number, name, student_id, photo_path, face_encoding FROM students')
                 # 等价于 for row in cur: yield row
                 yield from cur
         except Exception as e:
             print(f"查询失败：{e}")
             return
+
     #############用于训练模型的生成器#############
     def iter_show_students_trainmodel(self):
         try:
+            # 连接数据库
             with sqlite3.connect(database_path) as con:
+                # 创建游标
                 cur = con.cursor()
+                # 查询所有学生信息
                 cur.execute('SELECT id, id_number, name, student_id, photo_path, face_encoding FROM students')
                 # 等价于 for row in cur: yield row
                 yield from cur
         except Exception as e:
             print(f"查询失败：{e}")
             return
+
     #按身份证号查询学生信息，返回学生信息元组 或 None
     def find_show_students_idnumber(self, id_number):
         try:
+            # 连接数据库
             with sqlite3.connect(database_path) as con:
+                # 创建游标
                 cur = con.cursor()
+                # 查询所有学生信息
                 cur.execute('SELECT id_number, name, student_id, photo_path FROM students WHERE id_number = ?', (id_number,))
-                return cur.fetchone()  # 返回 tuple 或 None
+                return cur
         except Exception as e:
             print(f"查询失败：{e}")
             return None
+    
+    #生成器 按身份证号查询学生信息，返回学生信息元组
+    def iter_find_show_students_studentid(self, student_id):
+        try:
+            # 连接数据库
+            with sqlite3.connect(database_path) as con:
+                # 创建游标
+                cur = con.cursor()
+                # 查询所有学生信息
+                cur.execute('SELECT id_number, name, student_id, photo_path FROM students WHERE student_id = ?', (student_id,))
+                yield from cur
+        except Exception as e:
+            print(f"查询失败：{e}")
+            return
 
-    #生成器 按学号查询学生信息，返回学生信息元组
+
+    """#生成器 按学号查询学生信息，返回学生信息元组
     def iter_find_show_students_studentid(self, student_id):
         try:
             with sqlite3.connect(database_path) as con:
@@ -148,20 +174,24 @@ class database:
     #按学号查询学生信息，返回学生信息元组 或 None
     def find_show_students_studentid(self, student_id):
         find_students = self.iter_find_show_students_studentid(student_id)
-        return next(find_students, None)
+        return next(find_students, None)"""
 
     #按身份证号删除学生信息
     def delete_student_idnumber(self, id_number):
+        #先查询学生信息
         student = self.find_show_students_idnumber(id_number)
+        #如果未找到学生信息
         if not student:
             print("未找到该学生信息")
             return
         else:
+            #删除学生照片文件和数据库记录
             try:
+                # 连接数据库
                 with sqlite3.connect(database_path) as con:
+                    # 创建游标
                     cur = con.cursor()
                     #删除学生照片文件
-                    
                     student_photo_path = os.path.join(photo_path, student[3])
                     if os.path.isfile(student_photo_path):
                         os.remove(student_photo_path)
@@ -176,9 +206,13 @@ class database:
     #获取学生总数
     def get_student_count(self):
         try:
+            # 连接数据库
             with sqlite3.connect(database_path) as con:
+                # 创建游标
                 cur = con.cursor()
+                #查询学生总数
                 cur.execute("SELECT COUNT(*) FROM students")
+                #获取查询结果
                 count = cur.fetchone()[0]
                 return count
         except Exception as e:

@@ -62,13 +62,13 @@ def getImageAndLabels(path):
 
 
 if __name__ == '__main__':
-    path = r'D:\OPenCV'
+    opencv_path = os.path.dirname(os.path.abspath(__file__))
 
     # 确保路径存在
-    if not os.path.exists(path):
-        raise FileNotFoundError(f"图像路径不存在: {path}")
+    if not os.path.exists(opencv_path):
+        raise FileNotFoundError(f"图像路径不存在: {opencv_path}")
 
-    faces, ids = getImageAndLabels(path)
+    faces, ids = getImageAndLabels(opencv_path)
 
     if len(faces) == 0:
         print("错误：未收集到任何人脸样本，请检查图像和检测器。")

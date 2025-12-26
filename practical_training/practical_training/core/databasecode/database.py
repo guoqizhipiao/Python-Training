@@ -4,12 +4,23 @@ import sqlite3
 import os
 #高级文件操作
 import shutil
+import numpy as np
+import sys
+
+
 
 
 # 获取当前脚本所在目录（绝对路径）
 databasecode_path = os.path.dirname(os.path.abspath(__file__))
 photo_path = os.path.join(databasecode_path, "students_photos")
 database_path = os.path.join(databasecode_path, "students.db")
+
+core_path = os.path.dirname(databasecode_path)
+practical_training_path = os.path.dirname(core_path)
+
+sys.path.append(practical_training_path)
+
+from core.facerecognition.facialrecognitiontext import facial_recognition_text
 
 class database:
     #初始化
@@ -25,7 +36,8 @@ class database:
                 id_number TEXT NOT NULL UNIQUE, -- 身份证号文本类型，唯一
                 name TEXT NOT NULL, -- 姓名文本类型
                 student_id TEXT NOT NULL UNIQUE, -- 学号文本类型，唯一
-                photo_path TEXT NOT NULL -- 照片路径文本类型
+                photo_path TEXT NOT NULL, -- 照片路径文本类型
+                face_encoding BLOB  -- 新增：存储128维特征向量的二进制数据
             )
         ''')
         #提交更改并关闭连接
@@ -51,44 +63,61 @@ class database:
                     SELECT 1 FROM students 
                     WHERE id_number = ? OR student_id = ?
                 ''', (id_number, student_id))
+
                 if cur.fetchone():
                     print("身份证号或学号已存在")
-                    return
+                    return "REPEAT"
+                #提取人脸特征向量
+                encoding = facial_recognition_text(photo_source_path)
+
+                if encoding is None or encoding.size == 0:
+                    print("没有检测到脸")
+                    return "NOFACE"
+
+                embedding_blob = encoding.astype(np.float32).tobytes()
+
+                # 插入学生信息到数据库
+                cur.execute('''
+                    INSERT INTO students (id_number, name, student_id, photo_path, face_encoding)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (id_number, name, student_id, photo_source_path, embedding_blob))
+                print(f"学生 {name} 信息添加成功")
+
+                student_db_id = cur.lastrowid
+
                 #获取照片扩展名并命名为 学号.扩展名
                 original_ext = os.path.splitext(photo_source_path)[1].lower()
-                photo_filename = f"{student_id}{original_ext}"
+                photo_filename = f"{student_db_id}{original_ext}"
                 #复制照片到指定目录
                 photo_dest_path = f"{photo_path}/{photo_filename}"
                 shutil.copy(photo_source_path, photo_dest_path)
-                # 插入学生信息到数据库
-                cur.execute('''
-                    INSERT INTO students (id_number, name, student_id, photo_path)
-                    VALUES (?, ?, ?, ?)
-                ''', (id_number, name, student_id, photo_dest_path))
-                print(f"学生 {name} 信息添加成功")
+
+                return "SUCCESS"
         except Exception as e:
             print(f"添加失败：{e}")
 
     #生成器 逐行返回学生信息元组 (id_number, name, student_id, photo_path)
     #注意一个生成器不能重置 只能新建一个生成器实例
     def iter_show_students(self):
-        
         try:
             with sqlite3.connect(database_path) as con:
                 cur = con.cursor()
-                cur.execute('SELECT id_number, name, student_id, photo_path FROM students')
+                cur.execute('SELECT id_number, name, student_id, photo_path, face_encoding FROM students')
                 # 等价于 for row in cur: yield row
                 yield from cur
         except Exception as e:
             print(f"查询失败：{e}")
             return
 
-    #生成器 按身份证号查询学生信息，返回学生信息元组
+    '''#生成器 按身份证号查询学生信息，返回学生信息元组
     def iter_find_show_students_idnumber(self, id_number):
         try:
             with sqlite3.connect(database_path) as con:
                 cur = con.cursor()
                 cur.execute('SELECT id_number, name, student_id, photo_path FROM students WHERE id_number = ?', (id_number,))
+                print("身份证号查询到：",cur)
+                row = cur.fetchone()
+                print("查询结果：", row)
                 yield from cur
         except Exception as e:
             print(f"查询失败：{e}")
@@ -96,14 +125,25 @@ class database:
     #按身份证号查询学生信息，返回学生信息元组 或 None
     def find_show_students_idnumber(self, id_number):
         find_students = self.iter_find_show_students_idnumber(id_number)
-        return next(find_students, None)
+        return next(find_students, None)'''
     
+    def find_show_students_idnumber(self, id_number):
+        try:
+            with sqlite3.connect(database_path) as con:
+                cur = con.cursor()
+                cur.execute('SELECT id_number, name, student_id, photo_path FROM students WHERE id_number = ?', (id_number,))
+                return cur.fetchone()  # 返回 tuple 或 None
+        except Exception as e:
+            print(f"查询失败：{e}")
+            return None
+
     #生成器 按学号查询学生信息，返回学生信息元组
     def iter_find_show_students_studentid(self, student_id):
         try:
             with sqlite3.connect(database_path) as con:
                 cur = con.cursor()
                 cur.execute('SELECT id_number, name, student_id, photo_path FROM students WHERE student_id = ?', (student_id,))
+                print("学号查询到：",cur)
                 yield from cur
         except Exception as e:
             print(f"查询失败：{e}")
@@ -163,13 +203,13 @@ if __name__ == "__main__":
     print(next(s2))
     print(next(s3))"""
 
-    f1 = da.find_show_students_idnumber("123456789012345677")
+    f1 = da.find_show_students_idnumber("1")
     if f1:
         print(f1)
     else:
         print("未找到该学生信息")
 
-    f2 = da.find_show_students_studentid("1900061297")
+    f2 = da.find_show_students_studentid("1")
     if f2:
         print(f2)
     else:

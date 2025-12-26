@@ -4,30 +4,39 @@ from tkinter import messagebox
 import cv2
 from PIL import Image, ImageTk
 import threading
+import os
 
 # ======================
 # 配置区（根据你的环境修改）
 # ======================
-TRAINER_PATH = r'D:\OPenCV\trainer\trainer.yml'
-NAMES = ['0', '1', 'zhuwanli']  # ID 1 → NAMES[0]
+
+opencv_path = os.path.dirname(os.path.abspath(__file__))
 
 # 加载人脸识别模型
-try:
-    recognizer = cv2.face.LBPHFaceRecognizer_create()
-    recognizer.read(TRAINER_PATH)
-except Exception as e:
-    messagebox.showerror("错误", f"无法加载训练模型:\n{e}")
-    sys.exit(1)
 
 cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml'
 face_detector = cv2.CascadeClassifier(cascade_path)
 
 
 class FaceRecognitionApp:
-    def __init__(self, root):
+    def __init__(self, root, recognizer, NAMES):
+        self.recognizer = recognizer
+        self.NAMES = NAMES
         self.root = root
         self.root.title("人脸识别系统")
-        self.root.geometry("800x600")
+        # 获取屏幕宽度和高度
+        self.screen_width = self.root.winfo_screenwidth()
+        self.screen_height = self.root.winfo_screenheight()
+        # 设定窗口大小
+        self.window_width = int(self.screen_width * 0.5)
+        self.window_height = int(self.screen_height * 0.5)
+        # 计算窗口左上角坐标，使其居中
+        self.x = (self.screen_width - self.window_width) // 2
+        self.y = (self.screen_height - self.window_height) // 2
+        # 设置窗口最小宽度为 400，最小高度为 300
+        self.root.minsize(400, 300)
+        #设置大小和位置
+        self.root.geometry(f"{self.window_width}x{self.window_height}+{self.x}+{self.y}")
         self.root.resizable(True, True)
 
         # 创建菜单
@@ -82,11 +91,11 @@ class FaceRecognitionApp:
 
                 # 预测
                 try:
-                    ids, confidence = recognizer.predict(gray[y:y + h, x:x + w])
+                    ids, confidence = self.recognizer.predict(gray[y:y + h, x:x + w])
                     if confidence > 80:
                         text = "unknown"
                     else:
-                        name = NAMES[ids - 1] if 1 <= ids <= len(NAMES) else "unknown"
+                        name = self.NAMES[ids - 1] if 1 <= ids <= len(self.NAMES) else "unknown"
                         text = name
                     cv2.putText(frame, text, (x + 10, y - 10),
                                 cv2.FONT_HERSHEY_SIMPLEX, 0.8, (0, 255, 0), 2)
@@ -128,13 +137,31 @@ class TopMenu(tk.Menu):
         help_menu.add_command(label='关于', command=self.show_about)
         self.add_cascade(label='帮助', menu=help_menu)
 
-    def quit_app(self):
-        self.app.stop_recognition()
-        self.app.root.quit()
-        sys.exit()
-
     def show_about(self):
         messagebox.showinfo("关于", "人脸识别系统\n基于 OpenCV + LBPH\n作者：你自己 😊")
+
+    def quit_app(self):
+        self.app.stop_recognition()
+        self.app.root.destroy()  # 销毁窗口
+
+
+
+def camera(oprnvvgui,current_model):
+    trainer_path = os.path.join(opencv_path, 'trainer', current_model)
+
+
+    NAMES = ['0', '1', 'zhuwanli']
+
+    try:
+        recognizer = cv2.face.LBPHFaceRecognizer_create()
+        recognizer.read(trainer_path)
+    except Exception as e:
+        messagebox.showerror("错误", f"无法加载训练模型:\n{e}")
+
+    root = tk.Toplevel(oprnvvgui)
+    app = FaceRecognitionApp(root,recognizer,NAMES)
+    root.mainloop()
+
 
 
 # ======================
@@ -143,5 +170,5 @@ class TopMenu(tk.Menu):
 if __name__ == '__main__':
     root = tk.Tk()
     app = FaceRecognitionApp(root)
-    root.protocol("WM_DELETE_WINDOW", app.stop_recognition)  # 点×关闭时释放资源
+    root.protocol("WM_DELETE_WINDOW", root.quit_app)  # 点×关闭时释放资源
     root.mainloop()

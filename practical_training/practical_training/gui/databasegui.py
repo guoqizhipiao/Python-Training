@@ -19,6 +19,7 @@ class databasegui:
         self.loading = 0
         self.maingui = maingui
         self.setup_ui()
+        self.root.mainloop()
 
 
     # 初始化界面
@@ -30,8 +31,8 @@ class databasegui:
         self.screen_width = self.root.winfo_screenwidth()
         self.screen_height = self.root.winfo_screenheight()
         # 设定窗口大小
-        self.window_width = int(self.screen_width * 0.4)
-        self.window_height = int(self.screen_height * 0.4)
+        self.window_width = int(self.screen_width * 0.6)
+        self.window_height = int(self.screen_height * 0.6)
         # 计算窗口左上角坐标，使其居中
         self.x = (self.screen_width - self.window_width) // 2
         self.y = (self.screen_height - self.window_height) // 2
@@ -39,6 +40,7 @@ class databasegui:
         self.root.minsize(400, 300)
         #设置大小和位置
         self.root.geometry(f"{self.window_width}x{self.window_height}+{self.x}+{self.y}")
+
         # 分割左右两栏
         self.left_frame = tk.Frame(self.root, width=300, bg="lightgray", padx=10, pady=10)
         self.left_frame.grid(row=0, column=0, rowspan=4, sticky="nsew")
@@ -129,9 +131,9 @@ class databasegui:
         # 清空Treeview
         self.update_list()
 
-        # 调试按钮
+        '''# 调试按钮
         self.btn = ttk.Button(self.top_frame, text="调试", command=self.debug)
-        self.btn.grid(row=1, column=1, padx=10)
+        self.btn.grid(row=1, column=1, padx=10)'''
 
 
 
@@ -147,6 +149,7 @@ class databasegui:
                 if msg_type == 'tree_insert':
                     data = queue_data[0]
                     progress = queue_data[1]
+                    print("插入数据：", data)
                     self.tree.insert("", "end", values=(data[0], data[1], data[2]))
                     print("进度条：", progress)
                     self.progress_var.set(progress)
@@ -180,15 +183,30 @@ class databasegui:
             print("缺少信息, 请填写姓名、学号、身份证并选择照片。")
             messagebox.showwarning("缺少信息", "请填写姓名、学号、身份证并选择照片。")
             return
+
         print("添加学生：", self.name, self.student_id, self.id_number, self.photo_path)
-        messagebox.showinfo("成功", "学生信息添加成功！")
+        self.da = database()
+        return_message = self.da.add_student(self.id_number, self.name, self.student_id, self.photo_path)
+
+        if return_message == "NOFACE":
+            messagebox.showerror("错误", "照片中未检测到人脸，请选择其他照片。")
+            return
+        elif return_message == "REPEAT":
+            messagebox.showerror("错误", "该学生信息已存在，无法重复添加。")
+            return
+        elif return_message == "SUCCESS":
+            messagebox.showinfo("成功", "学生信息添加成功！")
+        else:
+            messagebox.showerror("错误", f"添加学生信息失败：{return_message}")
+            return
+        
 
     def load_database(self):
         self.da = database()
         self.count = self.da.get_student_count()
         print("学生总数：", self.count)
         if self.count == 0:
-            messagebox.showwarning("数据库未有数据")
+            messagebox.showwarning("数据库未有数据","数据库未有数据。")
             return
         elif self.load_database_count:
             print("正在加载")
@@ -211,48 +229,110 @@ class databasegui:
             self.progress = (self.step / self.count) * 100
             print(self.progress, self.s1)
             self.data_queue.put(('tree_insert', (self.s1, self.progress)))
-            time.sleep(0.5)  # 模拟耗时
+            #time.sleep(0.5)  # 模拟耗时
         print("正在load_database_done")
         self.data_queue.put(('load_database_done', None))
 
     def on_student_select(self, event):
+
+
+
         print("点击", event)
-        self.selection = self.tree.selection()
-        if not self.selection:
+        selection = self.tree.selection()
+        if not selection:
             return
-        print(self.selection)
-        self.item = self.tree.item(self.selection[0])
-        print("选中学生信息：", self.item['values'])
-        self.da = database()
-        self.student =  self.da.find_show_students_idnumber(self.item['values'][0])
-        print("完整学生信息：", self.student)
-        self.show_studet_data_window(self.student)
+        print(selection)
+
+
+        item = self.tree.item(selection[0])
+        print("选中项：", item)
+
+        print("选中学生信息：", item['values'])
+        da = database()
+        id_to_query = item['values'][0]
+        print(f"正在查询身份证号/学号: {repr(id_to_query)} (类型: {type(id_to_query)})")
+        student =  self.da.find_show_students_idnumber(id_to_query)
+        if student is None:
+            print("未找到该学生信息")
+            self.tree.selection_remove(self.tree.selection())
+            return
+        print("完整学生信息：", student)
+        self.show_studet_data_window(student)
+        self.tree.selection_remove(self.tree.selection())
+
+    def deletes(self, data):
+        delete_window = tk.Toplevel(self.root)
+        delete_window.title("删除确认")
+        delete_window.transient(self.studet_data_window)
+        x = (self.screen_width - 200) // 2
+        y = (self.screen_height - 150) // 2
+        delete_window.geometry(f"200x150+{x}+{y}")
+        
+        tk.Label(delete_window, text="确定要删除该学生的信息吗？").pack(pady=10)
+        confirm_button = tk.Button(delete_window, text="确认",
+                                    command=lambda: self.confirm_delete(data, delete_window))
+        confirm_button.pack(side="left", padx=10, pady=10)
+        cancel_button = tk.Button(delete_window, text="取消", command=delete_window.destroy)
+        cancel_button.pack(side="right", padx=10, pady=10)
+    
+    def confirm_delete(self, data, delete_window):
+        da = database()
+        da.delete_student_idnumber(data[0])
+        delete_window.destroy()
+        self.studet_data_window.destroy()
+        return 
+
 
     def show_studet_data_window(self, data):
-        studet_data_window = tk.Toplevel(self.root)
-        studet_data_window.title(f"学生详情 - {data[1]}")
-        self.studet_data_window_x = (self.screen_width - 400) // 2
-        self.studet_data_window_y = (self.screen_height - 500) // 2
-        studet_data_window.geometry(f"400x500+{self.studet_data_window_x}+{self.studet_data_window_y}")
         try:
-            img = Image.open(data[3])
-            img = img.resize((150, 200), Image.Resampling.LANCZOS)
-            photo = ImageTk.PhotoImage(img)
-            label_img = tk.Label(studet_data_window, image=photo)
-            label_img.image = photo  # 防止被垃圾回收
-            label_img.pack(pady=10)
+            self.studet_data_window = tk.Toplevel(self.root)
+            self.studet_data_window.title(f"学生详情 - {data[1]}")
+            self.studet_data_window_x = (self.screen_width - 400) // 2
+            self.studet_data_window_y = (self.screen_height - 500) // 2
+            self.studet_data_window.geometry(f"400x500+{self.studet_data_window_x}+{self.studet_data_window_y}")
+            try:
+                self.img = Image.open(data[3])
+                self.img = self.img.resize((150, 200), Image.Resampling.LANCZOS)
+                self.photo = ImageTk.PhotoImage(self.img)
+                self.label_img = tk.Label(self.studet_data_window, image=self.photo)
+                self.label_img.image = self.photo  # 防止被垃圾回收
+                self.label_img.pack(pady=10)
+            except Exception as e:
+                tk.Label(self.studet_data_window, text="照片加载失败", fg="red").pack()
+            stext = f"""
+    姓名：{data[1]}
+    身份证：{data[0]}
+    学号：{data[2]}""".strip()
+            tk.Label(self.studet_data_window, text=stext, justify="left", font=("Arial", 12)).pack(pady=10)
+            tk.Button(self.studet_data_window, text="删除", command=lambda: self.deletes(data)).pack(pady=10)
         except Exception as e:
-            tk.Label(studet_data_window, text="照片加载失败", fg="red").pack()
-        stext = f"""
-姓名：{data[1]}
-身份证：{data[0]}
-学号：{data[2]}""".strip()
-        tk.Label(studet_data_window, text=stext, justify="left", font=("Arial", 12)).pack(pady=10)
-        tk.Button(studet_data_window, text="关闭", command=studet_data_window.destroy).pack(pady=10)
+            self.tree.selection_remove(self.tree.selection())
+            return
+
 
     # 搜索学生信息函数
     def search_student(self):
-        pass
+        self.current_value = self.search_type.get().strip()
+        search_value = self.search_entry.get().strip()
+        print("搜索值：", search_value)
+        print("搜索类型：", self.current_value)
+        if not search_value:
+            return
+        self.da = database()
+        if self.current_value == "身份证":
+            return_message = self.da.find_show_students_idnumber(search_value)
+            
+        elif self.current_value == "学号":
+            return_message = self.da.find_show_students_studentid(search_value)
+        if return_message is None:
+            self.update_list()
+            self.tree.insert("", "end", values=("", "未找到该学生信息", ""))
+            return
+        else:
+            print("搜索结果：", return_message)
+            self.update_list()  # 清空列表
+            self.tree.insert("", "end", values=(return_message[0], return_message[1], return_message[2]))
+            return
 
     def update_list(self):
         # 清空树形控件
@@ -266,10 +346,6 @@ class databasegui:
             self.value = float(self.user_input)
             self.progress_var.set(self.value)
             self.root.update_idletasks()
-
-
-
-
 
 
 if __name__ == "__main__":

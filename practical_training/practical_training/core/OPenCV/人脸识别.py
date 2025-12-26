@@ -1,9 +1,14 @@
 import cv2
+import os
 
 # ===== 配置区 =====
 # 训练好的模型路径
 recognizer = cv2.face.LBPHFaceRecognizer_create()
-recognizer.read(r'D:\OPenCV\trainer\trainer.yml')
+
+opencv_path = os.path.dirname(os.path.abspath(__file__))
+trainer_path = os.path.join(opencv_path, 'trainer', 'trainer.yml')
+
+recognizer.read(trainer_path)
 
 # 姓名列表：必须与训练时的 ID 顺序一致！
 # 例如：ID=1 → names[0], ID=2 → names[1], ...

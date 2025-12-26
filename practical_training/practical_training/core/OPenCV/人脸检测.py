@@ -1,5 +1,8 @@
 import cv2 as cv
+import os
 
+opencv_path = os.path.dirname(os.path.abspath(__file__))
+img_path = os.path.join(opencv_path, 'test.jpg')
 
 def face_detect():
     gray = cv.cvtColor(img, cv.COLOR_BGR2GRAY)
@@ -18,7 +21,7 @@ def face_detect():
 
 
 # 读取图像（注意文件扩展名是否正确）
-img = cv.imread(r'D:\OPenCV\test.jpg')
+img = cv.imread(img_path)
 
 # 检查图像是否成功加载
 if img is None:

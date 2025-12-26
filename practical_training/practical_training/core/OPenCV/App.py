@@ -9,6 +9,8 @@ import os
 # ======================
 # 配置区（根据你的环境修改）
 # ======================
+TRAINER_PATH = r'D:\OPenCV\trainer\trainer.yml'
+NAMES = ['0', '1', 'zhuwanli','Liheng','Liujiahao']  # ID 1 → NAMES[0]
 
 opencv_path = os.path.dirname(os.path.abspath(__file__))
 
@@ -148,6 +150,8 @@ class TopMenu(tk.Menu):
 
 
 
+    def show_about(self):
+        messagebox.showinfo("关于", "人脸识别系统\n基于 OpenCV + LBPH\n作者：Zhu 😊")
 
 
 # ======================

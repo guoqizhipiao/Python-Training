@@ -214,6 +214,7 @@ class databasegui:
         self.count = self.da.get_student_count()
         print("学生总数：", self.count)
         if self.count == 0:
+            self.update_list()
             self.tree.insert("", "end", values=("","未有数据",""))
             return
         elif self.load_database_count:

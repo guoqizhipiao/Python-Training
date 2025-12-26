@@ -147,144 +147,195 @@ class databasegui:
 
     # 调度非阻塞队列检查
     def schedule_check_queue(self):
+        # 检查队列
         self.check_queue()
-        if self.loading > 0:  # 如果还在加载，继续调度
-            self.root.after(50, self.schedule_check_queue)  # 每50ms检查一次
+        # 如果还在加载，继续调度
+        if self.loading > 0: 
+            # 每50ms检查一次
+            self.root.after(50, self.schedule_check_queue)  
 
     # 非阻塞检查队列
+     # 快速清空当前所有消息（但不阻塞）
     def check_queue(self):
         try:
-            while True:  # 快速清空当前所有消息（但不阻塞）
+            while True: 
+                # 立即获取队列中的消息
                 msg_type, queue_data = self.data_queue.get_nowait()
+                # 处理不同类型的消息
+                # 当为插入树形项时
                 if msg_type == 'tree_insert':
+                    # 获取数据和进度
                     data = queue_data[0]
                     progress = queue_data[1]
                     print("插入数据：", data)
+                    # 插入树形项
                     self.tree.insert("", "end", values=(data[0], data[1], data[2]))
                     print("进度条：", progress)
+                    # 更新进度条
                     self.progress_var.set(progress)
-
+                # 当为加载完成时
                 elif msg_type == 'load_database_done':
                     print("加载完成")
+                    # 标记加载完成
                     self.load_database_count = False
-                    self.loading -= 1  # 在主线程安全地更新
-                    return  # 停止本次检查（但不会阻塞）
+                    # 线程计数减一
+                    self.loading -= 1  
+                    return
+         # 队列空了，正常退出
         except queue.Empty:
-            pass  # 队列空了，正常退出
+            pass 
 
     # 选择照片函数
     def select_photo(self):
+        # 打开文件对话框选择照片
         self.file_path = filedialog.askopenfilename(
             title="选择照片",
             filetypes=[("Image files", "*.jpg *.jpeg *.png *.gif")]
         )
+        # 如果选择了文件
         if self.file_path:
+            # 记录照片路径
             self.photo_path = self.file_path
             print("选择", self.photo_path)
-            # 可选：在标签上显示缩略图（这里简化处理）
+            # 更新标签显示已选择
             self.photo_label.config(text="✓ 已选择")
 
     # 添加学生信息函数
     def add_student(self):
+        # 获取输入信息
         self.name = self.name_entry.get().strip()
         self.student_id = self.sid_entry.get().strip()
         self.id_number = self.id_entry.get().strip()
+        # 检查是否缺少信息
         if not self.name or not self.student_id or not self.id_number or not self.photo_path:
             print("缺少信息, 请填写姓名、学号、身份证并选择照片。")
             messagebox.showwarning("缺少信息", "请填写姓名、学号、身份证并选择照片。")
             return
-
-        print("添加学生：", self.name, self.student_id, self.id_number, self.photo_path)
+        # 添加学生信息到数据库
         self.da = database()
+        # 调用数据库添加学生函数
         return_message = self.da.add_student(self.id_number, self.name, self.student_id, self.photo_path)
-
+        print("添加学生：", self.name, self.student_id, self.id_number, self.photo_path)
+        # 处理返回信息
+        # 当没有检测到人脸
         if return_message == "NOFACE":
             messagebox.showerror("错误", "照片中未检测到人脸，请选择其他照片。")
             return
+        # 当照片路径无效
         elif return_message == "REPEAT":
             messagebox.showerror("错误", "该学生信息已存在，无法重复添加。")
             return
+        # 当添加成功
         elif return_message == "SUCCESS":
             messagebox.showinfo("成功", "学生信息添加成功！")
+        # 其他错误
         else:
             messagebox.showerror("错误", f"添加学生信息失败：{return_message}")
             return
         
     # 加载数据库函数
     def load_database(self):
+        # 获取学生总数
         self.da = database()
         self.count = self.da.get_student_count()
         print("学生总数：", self.count)
+        # 如果没有学生数据
         if self.count == 0:
             self.update_list()
             self.tree.insert("", "end", values=("","未有数据",""))
             return
+        # 如果正在加载中
         elif self.load_database_count:
             print("正在加载")
+        # 如果没有在加载中
         else:
+            # 标记正在加载
             self.load_database_count = True
-            self.update_list()  # 清空列表
+            # 清空树形表
+            self.update_list()  
+            # 重置进度条
             self.progress_var.set(0)
+            # 启动加载线程
             self.thread = threading.Thread(target=self.load_data_thread, args=(self.da,))
+            # 设置为守护线程
             self.thread.daemon = True
+            # 启动线程
             self.thread.start()
+            # 线程计数加一
             self.loading += 1
             # 启动非阻塞的队列检查
             self.schedule_check_queue()
     
     # 加载数据线程函数
     def load_data_thread(self, da):
+        # 重置步骤计数
         self.step = 0
+        # 遍历学生数据
         for self.s1 in da.iter_show_students():
+            # 更新步骤和进度
             self.step += 1
             self.progress = (self.step / self.count) * 100
             print(self.progress, self.s1)
+            # 将数据和进度放入队列
             self.data_queue.put(('tree_insert', (self.s1, self.progress)))
             #time.sleep(0.5)  # 模拟耗时
         print("正在load_database_done")
+        # 标记加载完成
         self.data_queue.put(('load_database_done', None))
 
     # 点击学生信息事件处理函数
     def on_student_select(self, event):
         print("点击", event)
+        # 获取选中项
         selection = self.tree.selection()
+        # 如果没有选中项，直接返回
         if not selection:
             return
+        # 获取选中项信息
         print(selection)
         item = self.tree.item(selection[0])
         print("选中项：", item)
         print("选中学生信息：", item['values'])
+        # 查询学生详细信息
         da = database()
         id_to_query = item['values'][0]
         print(f"正在查询身份证号/学号: {repr(id_to_query)} (类型: {type(id_to_query)})")
+        # 调用数据库身份证号查询函数
         student =  self.da.find_show_students_idnumber(id_to_query)
+        # 如果未找到学生信息
         if student is None:
             print("未找到该学生信息")
             self.tree.selection_remove(self.tree.selection())
             return
+        # 显示学生详情
         print("完整学生信息：", student)
+        # 调用显示学生详情窗口函数
         self.show_studet_data_window(student)
+        # 清除选中状态
         self.tree.selection_remove(self.tree.selection())
 
     # 删除学生信息函数
     def deletes(self, data):
+        # 创建删除确认窗口
         delete_window = tk.Toplevel(self.root)
         delete_window.title("删除确认")
         delete_window.transient(self.studet_data_window)
         x = (self.screen_width - 200) // 2
         y = (self.screen_height - 150) // 2
         delete_window.geometry(f"200x150+{x}+{y}")
-        
         tk.Label(delete_window, text="确定要删除该学生的信息吗？").pack(pady=10)
+        # 确认按钮
         confirm_button = tk.Button(delete_window, text="确认",
                                     command=lambda: self.confirm_delete(data, delete_window))
         confirm_button.pack(side="left", padx=10, pady=10)
+        # 取消按钮
         cancel_button = tk.Button(delete_window, text="取消", command=delete_window.destroy)
         cancel_button.pack(side="right", padx=10, pady=10)
 
     # 确认删除函数
     def confirm_delete(self, data, delete_window):
         da = database()
+        # 调用数据库删除函数
         da.delete_student_idnumber(data[0])
         delete_window.destroy()
         self.studet_data_window.destroy()
@@ -293,12 +344,14 @@ class databasegui:
     # 显示学生详情窗口函数
     def show_studet_data_window(self, data):
         try:
+            # 创建学生详情窗口
             self.studet_data_window = tk.Toplevel(self.root)
             self.studet_data_window.title(f"学生详情 - {data[1]}")
             self.studet_data_window_x = (self.screen_width - 400) // 2
             self.studet_data_window_y = (self.screen_height - 500) // 2
             self.studet_data_window.geometry(f"400x500+{self.studet_data_window_x}+{self.studet_data_window_y}")
             try:
+                # 加载并显示学生照片
                 pphhoottoo = os.path.join(students_photo_path,data[3])
                 self.img = Image.open(pphhoottoo)
                 self.img = self.img.resize((150, 200), Image.Resampling.LANCZOS)
@@ -308,11 +361,14 @@ class databasegui:
                 self.label_img.pack(pady=10)
             except Exception as e:
                 tk.Label(self.studet_data_window, text="照片加载失败", fg="red").pack()
+            # 显示学生信息
             stext = f"""
     姓名：{data[1]}
     身份证：{data[0]}
     学号：{data[2]}""".strip()
+            # 删除按钮
             tk.Label(self.studet_data_window, text=stext, justify="left", font=("Arial", 12)).pack(pady=10)
+            # 调用删除函数
             tk.Button(self.studet_data_window, text="删除", command=lambda: self.deletes(data)).pack(pady=10)
         except Exception as e:
             self.tree.selection_remove(self.tree.selection())
@@ -321,36 +377,43 @@ class databasegui:
 
     # 搜索学生信息函数
     def search_student(self):
+        # 获取搜索类型和搜索值
         self.current_value = self.search_type.get().strip()
         search_value = self.search_entry.get().strip()
         print("搜索值：", search_value)
         print("搜索类型：", self.current_value)
+        # 如果搜索值为空，直接返回
         if not search_value:
             return
+        # 根据搜索类型调用相应的数据库查询函数
         self.da = database()
+        # 初始化返回信息
         if self.current_value == "身份证":
+            # 调用身份证查找函数
             return_message = self.da.find_show_students_idnumber(search_value)
-            
         elif self.current_value == "学号":
+            # 调用学号查找函数
             return_message = self.da.find_show_students_studentid(search_value)
+        # 处理返回信息
         if return_message is None:
             self.update_list()
             self.tree.insert("", "end", values=("", "未找到该学生信息", ""))
             return
         else:
             print("搜索结果：", return_message)
-            self.update_list()  # 清空列表
+             # 清空树形表
+            self.update_list() 
+            # 插入搜索结果
             self.tree.insert("", "end", values=(return_message[0], return_message[1], return_message[2]))
             return
      # 清空树形控件
     def update_list(self):
-       
         for item in self.tree.get_children():
+            # 删除树形表中的每一项
             self.tree.delete(item)
 
     # 调试弹出对话框输入进度
     def debug(self):
-        
         self.user_input = simpledialog.askstring("输入进度", "请输入 0-100 的百分比：")
         if self.user_input is not None:
             self.value = float(self.user_input)

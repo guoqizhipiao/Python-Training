@@ -18,7 +18,7 @@ def face_detect():
 
 
 # 读取图像（注意文件扩展名是否正确）
-img = cv.imread(r'D:\OPenCV\test.jpg')
+img = cv.imread(r'D:\OPenCV\Liu.jpg')
 
 # 检查图像是否成功加载
 if img is None:

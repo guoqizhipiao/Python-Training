@@ -9,7 +9,7 @@ import threading
 # 配置区（根据你的环境修改）
 # ======================
 TRAINER_PATH = r'D:\OPenCV\trainer\trainer.yml'
-NAMES = ['0', '1', 'zhuwanli']  # ID 1 → NAMES[0]
+NAMES = ['0', '1', 'zhuwanli','Liheng','Liujiahao']  # ID 1 → NAMES[0]
 
 # 加载人脸识别模型
 try:
@@ -134,7 +134,7 @@ class TopMenu(tk.Menu):
         sys.exit()
 
     def show_about(self):
-        messagebox.showinfo("关于", "人脸识别系统\n基于 OpenCV + LBPH\n作者：你自己 😊")
+        messagebox.showinfo("关于", "人脸识别系统\n基于 OpenCV + LBPH\n作者：Zhu 😊")
 
 
 # ======================

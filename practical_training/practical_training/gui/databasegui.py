@@ -9,6 +9,7 @@ import queue
 
 from core.databasecode.database import database
 
+#路径设置
 gui_path = os.path.dirname(os.path.abspath(__file__))
 practical_training_path = os.path.dirname(gui_path) 
 
@@ -81,10 +82,10 @@ class databasegui:
         # ====================== 右侧：搜索与显示 ======================
 
         # 让 right_frame 的行列可以伸展
-        self.right_frame.grid_rowconfigure(1, weight=1)    # 第1行（Treeview 所在行）可以拉伸
-        self.right_frame.grid_rowconfigure(0, weight=0)    # 第0行（顶部控件）固定高度
-        self.right_frame.grid_columnconfigure(0, weight=1) # Treeview 所在列可以横向拉伸
-        self.right_frame.grid_columnconfigure(1, weight=0) # 滚动条列固定宽度
+        self.right_frame.grid_rowconfigure(1, weight=1)
+        self.right_frame.grid_rowconfigure(0, weight=0)
+        self.right_frame.grid_columnconfigure(0, weight=1) 
+        self.right_frame.grid_columnconfigure(1, weight=0)
 
         # ------------------- 1. 顶部区域 -------------------
         self.top_frame = tk.Frame(self.right_frame)
@@ -104,13 +105,14 @@ class databasegui:
         self.search_frame = tk.Frame(self.top_frame)
         self.search_frame.grid(row=0, column=2, padx=(0, 5), pady=5, sticky="e")
 
+        # 搜索类型下拉框 + 输入框 + 按钮
         self.search_type = tk.StringVar(value="身份证")
         self.search_combo = ttk.Combobox(self.search_frame, textvariable=self.search_type, values=["身份证", "学号"], width=10)
         self.search_combo.pack(side="left", padx=5)
 
         self.search_entry = tk.Entry(self.search_frame, width=30)
         self.search_entry.pack(side="left", padx=5)
-
+        # 搜索按钮
         self.search_btn = tk.Button(self.search_frame, text="搜索", command=self.search_student)
         self.search_btn.pack(side="left", padx=5)
 
@@ -143,13 +145,13 @@ class databasegui:
         self.btn = ttk.Button(self.top_frame, text="调试", command=self.debug)
         self.btn.grid(row=1, column=1, padx=10)'''
 
-
-
+    # 调度非阻塞队列检查
     def schedule_check_queue(self):
         self.check_queue()
         if self.loading > 0:  # 如果还在加载，继续调度
             self.root.after(50, self.schedule_check_queue)  # 每50ms检查一次
 
+    # 非阻塞检查队列
     def check_queue(self):
         try:
             while True:  # 快速清空当前所有消息（但不阻塞）
@@ -208,7 +210,7 @@ class databasegui:
             messagebox.showerror("错误", f"添加学生信息失败：{return_message}")
             return
         
-
+    # 加载数据库函数
     def load_database(self):
         self.da = database()
         self.count = self.da.get_student_count()
@@ -230,7 +232,7 @@ class databasegui:
             # 启动非阻塞的队列检查
             self.schedule_check_queue()
     
-
+    # 加载数据线程函数
     def load_data_thread(self, da):
         self.step = 0
         for self.s1 in da.iter_show_students():
@@ -242,20 +244,15 @@ class databasegui:
         print("正在load_database_done")
         self.data_queue.put(('load_database_done', None))
 
+    # 点击学生信息事件处理函数
     def on_student_select(self, event):
-
-
-
         print("点击", event)
         selection = self.tree.selection()
         if not selection:
             return
         print(selection)
-
-
         item = self.tree.item(selection[0])
         print("选中项：", item)
-
         print("选中学生信息：", item['values'])
         da = database()
         id_to_query = item['values'][0]
@@ -269,6 +266,7 @@ class databasegui:
         self.show_studet_data_window(student)
         self.tree.selection_remove(self.tree.selection())
 
+    # 删除学生信息函数
     def deletes(self, data):
         delete_window = tk.Toplevel(self.root)
         delete_window.title("删除确认")
@@ -283,7 +281,8 @@ class databasegui:
         confirm_button.pack(side="left", padx=10, pady=10)
         cancel_button = tk.Button(delete_window, text="取消", command=delete_window.destroy)
         cancel_button.pack(side="right", padx=10, pady=10)
-    
+
+    # 确认删除函数
     def confirm_delete(self, data, delete_window):
         da = database()
         da.delete_student_idnumber(data[0])
@@ -291,7 +290,7 @@ class databasegui:
         self.studet_data_window.destroy()
         return 
 
-
+    # 显示学生详情窗口函数
     def show_studet_data_window(self, data):
         try:
             self.studet_data_window = tk.Toplevel(self.root)
@@ -343,14 +342,15 @@ class databasegui:
             self.update_list()  # 清空列表
             self.tree.insert("", "end", values=(return_message[0], return_message[1], return_message[2]))
             return
-
+     # 清空树形控件
     def update_list(self):
-        # 清空树形控件
+       
         for item in self.tree.get_children():
             self.tree.delete(item)
 
+    # 调试弹出对话框输入进度
     def debug(self):
-        # 弹出对话框输入进度
+        
         self.user_input = simpledialog.askstring("输入进度", "请输入 0-100 的百分比：")
         if self.user_input is not None:
             self.value = float(self.user_input)

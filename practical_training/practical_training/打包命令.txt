@@ -1,0 +1,3 @@
+pyinstaller --onedir --add-data "core;core" --add-data "gui;gui" --add-data "face_recognition_models;face_recognition_models" main.py
+
+注意opencv的模型

@@ -159,7 +159,7 @@ class database:
             return
 
 
-    """#生成器 按学号查询学生信息，返回学生信息元组
+    #生成器 按学号查询学生信息，返回学生信息元组
     def iter_find_show_students_studentid(self, student_id):
         try:
             with sqlite3.connect(database_path) as con:
@@ -174,7 +174,7 @@ class database:
     #按学号查询学生信息，返回学生信息元组 或 None
     def find_show_students_studentid(self, student_id):
         find_students = self.iter_find_show_students_studentid(student_id)
-        return next(find_students, None)"""
+        return next(find_students, None)
 
     #按身份证号删除学生信息
     def delete_student_idnumber(self, id_number):

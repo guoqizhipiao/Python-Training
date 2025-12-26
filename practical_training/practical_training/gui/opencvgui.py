@@ -4,7 +4,6 @@ import numpy as np
 import os
 from pathlib import Path
 
-#from core.OPenCV.App import 
 
 gui_path = os.path.dirname(os.path.abspath(__file__))
 practical_training_path = os.path.dirname(gui_path)
@@ -22,7 +21,6 @@ from core.OPenCV.trainmodel import database_train_model
 from core.OPenCV.database_camera import camera
 
 class opencvgui:
-    
     #启动函数
     def __init__(self, maingui):
         self.current_model = ""
@@ -30,7 +28,6 @@ class opencvgui:
         self.maingui = maingui
         self.setup_ui()
         self.root.mainloop()
-
     # 初始化界面
     def setup_ui(self):
         self.root = tk.Toplevel(self.maingui)
@@ -50,23 +47,18 @@ class opencvgui:
         self.root.minsize(400, 300)
         #设置大小和位置
         self.root.geometry(f"{self.window_width}x{self.window_height}+{self.x}+{self.y}")
-
         # 分割左右两栏
         self.left_frame = tk.Frame(self.root, width=300, bg="lightgray", padx=10, pady=10)
         self.left_frame.grid(row=0, column=0, rowspan=4, sticky="nsew")
         self.right_frame = tk.Frame(self.root, bg="white")
         self.right_frame.grid(row=0, column=1, sticky="nsew", padx=10, pady=10)
-
         # 设置grid布局管理器网格权重
         self.root.columnconfigure(1, weight=1)
         self.root.rowconfigure(0, weight=1)
-
         # =================== 左侧区域 ===================
         # 已选择模型标签
-
         self.model_label = tk.Label(self.left_frame, text="查询数据库", font=("Arial", 12), bg="lightgray")
         self.model_label.pack(pady=5)
-
         # 添加照片区域
         self.photo_label = tk.Label(self.left_frame, text="添加照片", font=("Arial", 12), relief="solid", borderwidth=2, width=20, height=8)
         self.photo_label.pack(pady=10)
@@ -74,42 +66,34 @@ class opencvgui:
         self.photo_path = ""
         # 点击添加照片
         self.photo_label.bind("<Button-1>", lambda e: self.select_photo())
-
         # 人脸识别按钮
         tk.Button(self.left_frame, text="人脸识别", font=("Arial", 12), command=self.face_recognition).pack(pady=5)
-
         # 识别信息展示框
         self.info_text = tk.Text(self.left_frame, width=30, height=40, font=("Arial", 10))
         self.info_text.pack(pady=10)
         self.info_text.insert(tk.END, "识别结果将显示在此处...")
-
         # =================== 右侧区域 ===================
-
         self.top_frame = tk.Frame(self.right_frame)
         self.top_frame.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(5, 10))
-
-
+        #使用摄像头按钮
         self.camera_button = tk.Button(self.top_frame, text="使用摄像头", command=self.start_camera)
         self.camera_button.grid(row=0, column=0, padx=(5, 10), pady=5, sticky="w")
-
+        #刷新模型按钮
         self.camera_button = tk.Button(self.top_frame, text="刷新模型列表", command=self.refresh_model_list)
         self.camera_button.grid(row=0, column=1, padx=(5, 10), pady=5, sticky="w")
-
+        #显示选择LBPH模型
         self.model_label = tk.Label(self.top_frame, text="选择LBPH模型：", font=("Arial", 12), bg="lightgray")
         self.model_label.grid(row=0, column=2, padx=(5, 10), pady=5, sticky="w")
-
+        #训练LBPH模型按钮
         self.trainmodel_button = tk.Button(self.top_frame, text="训练LBPH模型", command=self.train_model)
         self.trainmodel_button.grid(row=0, column=3, padx=(5, 10), pady=5, sticky="e")
-
+        #调整行列权重
         self.top_frame.columnconfigure(0, weight=1)
         self.top_frame.columnconfigure(3, weight=1)
-
-
+        #树形表
         self.tree = ttk.Treeview(self.right_frame, columns=("LBPH模型名称"), show="headings")
         self.tree.heading("LBPH模型名称", text="LBPH模型名称")
         self.tree.column("LBPH模型名称", width=100, anchor="center")
-      
-
         # Treeview 放在第1行，第1列，允许伸展
         self.tree.grid(row=1, column=1, sticky="nsew", padx=(5, 0), pady=(0, 5))
         # 垂直滚动条放在第1行，第2列
@@ -117,25 +101,22 @@ class opencvgui:
         self.scrollbar.grid(row=1, column=2, sticky="ns", pady=(0, 5))
         # 关联滚动条与 Treeview
         self.tree.configure(yscrollcommand=self.scrollbar.set)
-
         self.update_list()
-
+        #鼠标事件
         self.tree.bind("<Button-1>", self.on_tree_click)
         self.tree.bind("<ButtonRelease-1>", self.on_model_select)
         self.tree.bind("<Button-3>", self.on_right_click)
-
-
+        #调用一次加载模型列表
         self.add_sample_models()
-
+        #调整行列权重
         self.right_frame.rowconfigure(1, weight=1)
         self.right_frame.columnconfigure(0, weight=0)
         self.right_frame.columnconfigure(1, weight=1)
         self.right_frame.columnconfigure(2, weight=0)
 
-
-
     # 选择照片函数
     def select_photo(self):
+        #
         self.file_path = filedialog.askopenfilename(
             title="选择照片",
             filetypes=[("Image files", "*.jpg *.jpeg *.png *.gif")]

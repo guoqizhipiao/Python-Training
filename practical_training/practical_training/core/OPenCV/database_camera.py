@@ -7,11 +7,18 @@ import threading
 import os
 import json
 import numpy as np
+from collections import deque
+import time
 # ======================
 # 配置区（根据你的环境修改）
 # ======================
 
 opencv_path = os.path.dirname(os.path.abspath(__file__))
+core_path = os.path.dirname(opencv_path)
+practical_training_path = os.path.dirname(core_path)
+sys.path.append(practical_training_path)
+
+from core.facerecognition.facedatamatch import face_data_match_from_frame
 
 # 加载人脸识别模型
 
@@ -21,6 +28,12 @@ face_detector = cv2.CascadeClassifier(cascade_path)
 
 class FaceRecognitionApp:
     def __init__(self, root, recognizer, NAMES):
+
+        self.frame_deque = deque()
+        self.frame_deque_lock = threading.Lock()  # 添加锁
+        self.face_data_match_deque = deque()
+        self.face_data_match_lock = threading.Lock()  # 添加锁
+
         self.recognizer = recognizer
         self.NAMES = NAMES
         self.root = root
@@ -52,8 +65,7 @@ class FaceRecognitionApp:
         self.is_running = False
         self.cap = None
 
-        # 启动后自动开始识别（可选）
-        # self.start_recognition()
+        self.start_recognition()
 
     def start_recognition(self):
         print(self.recognizer)
@@ -74,45 +86,77 @@ class FaceRecognitionApp:
             self.cap.release()
         self.video_label.config(image='')  # 清空画面
 
+
+
     def update_frame(self):
+        print("启动多线程人脸识别")
+
+        self.match_confidence = 0
+        self.cv2_confidence = 0
+        self.cv2_text = ""
+        self.match_text = ""
+
+        self.t1 = threading.Thread(target=self.face_data_match_from_frame_thread, daemon=True)
+        self.t1.start()
+        self.update_frame_main()
+
+
+    def update_frame_main(self):
         if not self.is_running:
             return
 
+        # 清空队列，保持最新一帧
+        while len(self.frame_deque) > 1:
+            self.frame_deque.pop()
+
         ret, frame = self.cap.read()
-        if ret:
-            # 人脸识别处理
-            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-            faces = face_detector.detectMultiScale(
-                gray, scaleFactor=1.1, minNeighbors=5,
-                minSize=(100, 100), maxSize=(300, 300)
-            )
+        if ret: 
+            # 将当前帧放入队列
+            self.frame_deque.append(frame)
+            cv2_return = self.cv2_face_recognize(frame)
 
-            for (x, y, w, h) in faces:
-                # 画圆形框
-                center = (x + w // 2, y + h // 2)
-                radius = w // 2
-                cv2.circle(frame, center, radius, (0, 255, 0), 2)
+            if cv2_return:
+                w1, w2 = 0.7, 0.3
+                frame, self.cv2_text, self.cv2_confidence, x, y = cv2_return
+                #print("OpenCV识别结果:", self.cv2_text, self.cv2_confidence)
+                self.cv2_confidence = 1 - (self.cv2_confidence/80)
+                self.cv2_confidence = w2 * self.cv2_confidence
+                text =  self.cv2_text
+                if len(self.face_data_match_deque) > 0:
 
-                # 预测
-                try:
-                    ids, confidence = self.recognizer.predict(gray[y:y + h, x:x + w])
-                    print(ids, confidence)
-                    if confidence > 80:
-                        text = "unknown"
+                    with self.face_data_match_lock:
+                        match_result = self.face_data_match_deque.pop()
+
+                    if isinstance(match_result, tuple) and match_result[0] == "SUCCESS":
+                        self.match_text = match_result[2]
+                        self.match_confidence = match_result[5]
+
+                        self.match_confidence = 1 - (self.match_confidence / 0.4)
+                        self.match_confidence = w1 * self.match_confidence
+
+                    elif match_result == "NOMATCH":
+                        self.match_text = "未知人员"
+
+                print("==========opencv识别结果:", self.cv2_text, self.cv2_confidence)
+                print("==========math识别结果:", self.match_text, self.match_confidence)
+
+                if self.match_text == self.cv2_text:
+                    text = self.match_text
+                elif self.match_text != self.cv2_text:
+                    if self.match_confidence > self.cv2_confidence:
+                        text = self.match_text
                     else:
-                        name = self.NAMES.get(str(ids), "未知人员")
-                        #name = self.NAMES[ids] if ids in self.NAMES else "unknown"
-                        text = name
-                    frame = self.cv2_putText_chinese(
-                        frame,
-                        text,
-                        pos=(x + 10, y - 30),  # 注意：PIL 的 y 坐标可能需要微调（比 OpenCV 高一点）
-                        font_path="simsun.ttc",  # Windows 系统宋体
-                        font_size=24,
-                        color=(0, 255, 0)
-                    )
-                except Exception as e:
-                    print("预测出错:", e)
+                        text = self.cv2_text
+                elif self.match_text == "未知人员":
+                    text = self.match_text
+
+                frame = self.cv2_putText_chinese(
+                frame,
+                text,
+                pos=(x + 10, y - 30),  # 注意：PIL 的 y 坐标可能需要微调（比 OpenCV 高一点）
+                font_path="simsun.ttc",  # Windows 系统宋体
+                font_size=24,
+                color=(0, 255, 0))
 
             # 转为 PIL 图像并在 Tkinter 中显示
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -122,8 +166,61 @@ class FaceRecognitionApp:
             self.video_label.configure(image=imgtk)
 
         # 每 20ms 更新一帧
-        self.video_label.after(20, self.update_frame)
+        self.video_label.after(20, self.update_frame_main)
 
+
+    def cv2_face_recognize(self, frame):
+
+            # 人脸识别处理
+            gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+            faces = face_detector.detectMultiScale(
+                gray, scaleFactor=1.2, minNeighbors=5,
+                minSize=(60, 60), maxSize=(1000, 1000)
+            )
+            for (x, y, w, h) in faces:
+                # 画圆形框
+                center = (x + w // 2, y + h // 2)
+                radius = w // 2
+                cv2.circle(frame, center, radius, (0, 255, 0), 2)
+
+                # 预测
+                try:
+                    ids, confidence = self.recognizer.predict(gray[y:y + h, x:x + w])
+
+                    if confidence > 80:
+                        confidence = 80
+                        text = "未知人员"
+                    else:
+                        name = self.NAMES.get(str(ids), "未知人员")
+                        text = name
+
+                    return (frame, text, confidence, x, y)
+                    break
+
+                except Exception as e:
+                    print("预测出错:", e)
+
+    def face_data_match_from_frame_thread(self):
+        while self.is_running:
+            if len(self.frame_deque) == 0:
+                time.sleep(0.05)
+                continue
+            # 获取最新一帧
+            with self.frame_deque_lock:
+                frame = self.frame_deque[-1].copy()
+            # 调用匹配函数
+            result = face_data_match_from_frame(frame)
+            if result == "NOFACE":
+                print("未检测到人脸")
+            elif isinstance(result, tuple) and result[0] == "SUCCESS":
+                print("识别结果:", result)
+                time.sleep(1)  # 控制处理频率
+            elif result == "NOMATCH":
+                print("没有匹配到已注册的学生")
+                time.sleep(1)  # 控制处理频率
+
+            with self.face_data_match_lock:
+                self.face_data_match_deque.append(result)
 
 
     def cv2_putText_chinese(self, img, text, pos, font_path="simsun.ttc", font_size=30, color=(0, 255, 0)):

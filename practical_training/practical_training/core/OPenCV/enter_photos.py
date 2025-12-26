@@ -19,6 +19,8 @@ def getImageAndLabels_database(imagePaths):
     cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml'
     face_detector = cv2.CascadeClassifier(cascade_path)
 
+    print(cascade_path)
+
     if face_detector.empty():
         raise IOError(f"无法加载级联分类器: {cascade_path}")
 
@@ -32,8 +34,9 @@ def getImageAndLabels_database(imagePaths):
             faces = face_detector.detectMultiScale(
                 img_numpy,
                 scaleFactor=1.1,
-                minNeighbors=5,
-                minSize=(30, 30)
+                minNeighbors=3,
+                minSize=(60, 60),
+                maxSize=(10000, 1000)
             )
 
             # 从文件名提取 ID（假设格式为 "1.jpg", "2.png" 等）

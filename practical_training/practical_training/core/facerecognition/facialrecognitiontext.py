@@ -23,6 +23,38 @@ def facial_recognition_text(image_path, return_all=False):
     else:
         return face_encodings[0]  # 第一个人脸的 embedding，shape=(128,)
 
+def facial_recognition_from_frame(frame, return_all=False):
+    """
+    从 OpenCV 图像帧中提取人脸特征向量（128维 embedding）。
+    
+    参数:
+        frame (np.ndarray): BGR 格式的图像帧（来自 cv2.VideoCapture）。
+        return_all (bool): 是否返回所有检测到的人脸编码。
+    
+    返回:
+        - 如果未检测到人脸：return_all=True 时返回 []，否则返回 None。
+        - 否则：return_all=True 返回 list[np.ndarray]，否则返回第一个 np.ndarray（shape=(128,)）。
+    """
+    if frame is None or frame.size == 0:
+        raise ValueError("输入帧为空")
+
+    # OpenCV 默认是 BGR，face_recognition 需要 RGB
+    rgb_frame = frame[:, :, ::-1]  # 快速 BGR -> RGB
+
+    # 检测人脸位置（使用 HOG 模型，速度快）
+    face_locations = face_recognition.face_locations(rgb_frame, model="hog")
+
+    if len(face_locations) == 0:
+        return [] if return_all else None
+
+    # 提取人脸编码
+    face_encodings = face_recognition.face_encodings(rgb_frame, known_face_locations=face_locations)
+
+    if return_all:
+        return face_encodings
+    else:
+        return face_encodings[0]  # 返回第一个人脸的 128 维特征
+
 if __name__ == "__main__":
     # 示例：提取单个人脸特征向量
     path = r"E:\GZT\C_C++\PYthon_shixun\github\practical_training\practical_training\core\OPenCV\3.jpg"

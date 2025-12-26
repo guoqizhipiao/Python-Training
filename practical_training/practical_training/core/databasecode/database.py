@@ -14,10 +14,8 @@ import sys
 databasecode_path = os.path.dirname(os.path.abspath(__file__))
 photo_path = os.path.join(databasecode_path, "students_photos")
 database_path = os.path.join(databasecode_path, "students.db")
-
 core_path = os.path.dirname(databasecode_path)
 practical_training_path = os.path.dirname(core_path)
-
 sys.path.append(practical_training_path)
 
 from core.facerecognition.facialrecognitiontext import facial_recognition_text
@@ -113,6 +111,7 @@ class database:
         except Exception as e:
             print(f"查询失败：{e}")
             return
+    #############用于训练模型的生成器#############
     def iter_show_students_trainmodel(self):
         try:
             with sqlite3.connect(database_path) as con:
@@ -123,25 +122,7 @@ class database:
         except Exception as e:
             print(f"查询失败：{e}")
             return
-
-    '''#生成器 按身份证号查询学生信息，返回学生信息元组
-    def iter_find_show_students_idnumber(self, id_number):
-        try:
-            with sqlite3.connect(database_path) as con:
-                cur = con.cursor()
-                cur.execute('SELECT id_number, name, student_id, photo_path FROM students WHERE id_number = ?', (id_number,))
-                print("身份证号查询到：",cur)
-                row = cur.fetchone()
-                print("查询结果：", row)
-                yield from cur
-        except Exception as e:
-            print(f"查询失败：{e}")
-            return
     #按身份证号查询学生信息，返回学生信息元组 或 None
-    def find_show_students_idnumber(self, id_number):
-        find_students = self.iter_find_show_students_idnumber(id_number)
-        return next(find_students, None)'''
-    
     def find_show_students_idnumber(self, id_number):
         try:
             with sqlite3.connect(database_path) as con:
@@ -169,7 +150,7 @@ class database:
         find_students = self.iter_find_show_students_studentid(student_id)
         return next(find_students, None)
 
-
+    #按身份证号删除学生信息
     def delete_student_idnumber(self, id_number):
         student = self.find_show_students_idnumber(id_number)
         if not student:
@@ -192,6 +173,7 @@ class database:
             except Exception as e:
                 print(f"删除失败：{e}")
 
+    #获取学生总数
     def get_student_count(self):
         try:
             with sqlite3.connect(database_path) as con:

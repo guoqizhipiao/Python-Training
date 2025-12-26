@@ -81,7 +81,7 @@ class database:
                     INSERT INTO students (id_number, name, student_id, photo_path, face_encoding)
                     VALUES (?, ?, ?, ?, ?)
                 ''', (id_number, name, student_id, photo_source_path, embedding_blob))
-                print(f"学生 {name} 信息添加成功")
+
 
                 student_db_id = cur.lastrowid
 
@@ -91,7 +91,12 @@ class database:
                 #复制照片到指定目录
                 photo_dest_path = f"{photo_path}/{photo_filename}"
                 shutil.copy(photo_source_path, photo_dest_path)
+                #更新数据库中的照片路径
+                cur.execute('''
+                    UPDATE students SET photo_path = ? WHERE id = ?
+                ''', (photo_filename, student_db_id))
 
+                print(f"学生 {name} 信息添加成功")
                 return "SUCCESS"
         except Exception as e:
             print(f"添加失败：{e}")
@@ -103,6 +108,16 @@ class database:
             with sqlite3.connect(database_path) as con:
                 cur = con.cursor()
                 cur.execute('SELECT id_number, name, student_id, photo_path, face_encoding FROM students')
+                # 等价于 for row in cur: yield row
+                yield from cur
+        except Exception as e:
+            print(f"查询失败：{e}")
+            return
+    def iter_show_students_trainmodel(self):
+        try:
+            with sqlite3.connect(database_path) as con:
+                cur = con.cursor()
+                cur.execute('SELECT id, id_number, name, student_id, photo_path, face_encoding FROM students')
                 # 等价于 for row in cur: yield row
                 yield from cur
         except Exception as e:
@@ -165,9 +180,12 @@ class database:
                 with sqlite3.connect(database_path) as con:
                     cur = con.cursor()
                     #删除学生照片文件
-                    photo_path = student[3]
-                    if os.path.isfile(photo_path):
-                        os.remove(photo_path)
+                    
+                    student_photo_path = os.path.join(photo_path, student[3])
+                    if os.path.isfile(student_photo_path):
+                        os.remove(student_photo_path)
+                        print("照片删除成功")
+                    print(student_photo_path)
                     #从数据库中删除学生记录
                     cur.execute('DELETE FROM students WHERE id_number = ?', (id_number,))
                     print(f"学生 {student[1]} 信息删除成功")

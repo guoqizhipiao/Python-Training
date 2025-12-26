@@ -9,6 +9,13 @@ import queue
 
 from core.databasecode.database import database
 
+gui_path = os.path.dirname(os.path.abspath(__file__))
+practical_training_path = os.path.dirname(gui_path) 
+
+core_path = os.path.join(practical_training_path, 'core')
+database_path = os.path.join(core_path, 'databasecode')
+students_photo_path = os.path.join(database_path, "students_photos")
+
 #数据库管理界面
 class databasegui:
     
@@ -25,6 +32,7 @@ class databasegui:
     # 初始化界面
     def setup_ui(self):
         self.root = tk.Toplevel(self.maingui)
+        self.root.transient(self.maingui)
         #self.root = tk.Tk()
         self.root.title("数据库")
         # 获取屏幕宽度和高度
@@ -206,7 +214,7 @@ class databasegui:
         self.count = self.da.get_student_count()
         print("学生总数：", self.count)
         if self.count == 0:
-            messagebox.showwarning("数据库未有数据","数据库未有数据。")
+            self.tree.insert("", "end", values=("","未有数据",""))
             return
         elif self.load_database_count:
             print("正在加载")
@@ -291,7 +299,8 @@ class databasegui:
             self.studet_data_window_y = (self.screen_height - 500) // 2
             self.studet_data_window.geometry(f"400x500+{self.studet_data_window_x}+{self.studet_data_window_y}")
             try:
-                self.img = Image.open(data[3])
+                pphhoottoo = os.path.join(students_photo_path,data[3])
+                self.img = Image.open(pphhoottoo)
                 self.img = self.img.resize((150, 200), Image.Resampling.LANCZOS)
                 self.photo = ImageTk.PhotoImage(self.img)
                 self.label_img = tk.Label(self.studet_data_window, image=self.photo)

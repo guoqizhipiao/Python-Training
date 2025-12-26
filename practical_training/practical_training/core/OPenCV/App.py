@@ -146,21 +146,7 @@ class TopMenu(tk.Menu):
 
 
 
-def camera(oprnvvgui,current_model):
-    trainer_path = os.path.join(opencv_path, 'trainer', current_model)
 
-
-    NAMES = ['0', '1', 'zhuwanli']
-
-    try:
-        recognizer = cv2.face.LBPHFaceRecognizer_create()
-        recognizer.read(trainer_path)
-    except Exception as e:
-        messagebox.showerror("错误", f"无法加载训练模型:\n{e}")
-
-    root = tk.Toplevel(oprnvvgui)
-    app = FaceRecognitionApp(root,recognizer,NAMES)
-    root.mainloop()
 
 
 

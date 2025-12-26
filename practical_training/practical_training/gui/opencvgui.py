@@ -191,7 +191,7 @@ class opencvgui:
 
             self.tree.insert("", "end", text=filename, values=(filename,))
 
-
+    #选中模型
     def on_model_select(self, event):
         """当用户选择模型时触发"""
         selection = self.tree.selection()
@@ -203,7 +203,8 @@ class opencvgui:
             self.current_model = model_name
             print(f"选择LBPH模型: {model_name}")
             self.model_label.config(text=f"已选择LBPH模型：{model_name}")
-
+    
+    #选中空白
     def on_tree_click(self, event):
         """处理 Treeview 左键点击，用于检测是否点击空白区域"""
         # 获取点击位置对应的 item
@@ -213,7 +214,8 @@ class opencvgui:
             self.current_model = None
             self.model_label.config(text="未选择模型")
             print("点击空白区域，已取消选择")
-
+    
+    #右键删除
     def on_right_click(self, event):
         """右键点击事件，显示上下文菜单"""
         # 获取鼠标点击位置对应的 item ID
@@ -234,6 +236,7 @@ class opencvgui:
         else:
             self.tree.selection_remove(self.tree.selection())
 
+    #确认删除
     def delete_model(self, model_name):
         print(f"删除LBPH模型: {model_name}")
         model_path = os.path.join(trainer_path, model_name)

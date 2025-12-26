@@ -36,7 +36,7 @@ def database_train_model():
         print("错误：未收集到任何人脸样本，请检查图像和检测器。")
     else:
         # 创建 trainer 目录
-        os.makedirs('trainer', exist_ok=True)
+        os.makedirs(trainer_path, exist_ok=True)
 
         # 训练识别器
         recognizer = cv2.face.LBPHFaceRecognizer_create()

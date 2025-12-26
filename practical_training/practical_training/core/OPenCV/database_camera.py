@@ -65,7 +65,17 @@ class FaceRecognitionApp:
         self.is_running = False
         self.cap = None
 
-        self.start_recognition()
+        #self.start_recognition()
+
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+
+    def on_closing(self):
+        self.is_running = False
+        if self.cap:
+            self.cap.release()
+        self.video_label.config(image='')
+        self.root.destroy()
+
 
     def start_recognition(self):
         print(self.recognizer)
@@ -201,6 +211,8 @@ class FaceRecognitionApp:
                     print("预测出错:", e)
 
     def face_data_match_from_frame_thread(self):
+        if not self.is_running:
+            return
         while self.is_running:
             if len(self.frame_deque) == 0:
                 time.sleep(0.05)
@@ -309,7 +321,6 @@ def camera(oprnvvgui,current_model):
         root.mainloop()
     except Exception as e:
         print("启动摄像头失败:", e)
-
 
 
 

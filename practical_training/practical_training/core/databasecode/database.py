@@ -132,19 +132,19 @@ class database:
 
     #按身份证号查询学生信息，返回学生信息元组 或 None
     def find_show_students_idnumber(self, id_number):
-        find_students = self.iter_find_show_students_studentid(id_number)
+        find_students = self.iter_find_show_students_idnumber(id_number)
         return next(find_students, None)
 
     
     #生成器 按身份证号查询学生信息，返回学生信息元组
-    def iter_find_show_students_studentid(self, student_id):
+    def iter_find_show_students_idnumber(self, id_number):
         try:
             # 连接数据库
             with sqlite3.connect(database_path) as con:
                 # 创建游标
                 cur = con.cursor()
                 # 查询所有学生信息
-                cur.execute('SELECT id_number, name, student_id, photo_path FROM students WHERE student_id = ?', (student_id,))
+                cur.execute('SELECT id_number, name, student_id, photo_path FROM students WHERE id_number = ?', (id_number,))
                 yield from cur
         except Exception as e:
             print(f"查询失败：{e}")

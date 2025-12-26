@@ -17,7 +17,7 @@ class maingui:
         self.setup_ui()
         self.root.mainloop()
 
-
+    #界面
     def setup_ui(self):
         self.root = tk.Tk()
         self.root.title("主界面")
@@ -31,21 +31,20 @@ class maingui:
         window_height = int(self.screen_height * 0.7)
         x = (self.screen_width - window_width) // 2
         y = (self.screen_height - window_height) // 2
-    
+        # 设置窗口最小大小
         self.root.minsize(800, 600)
         self.root.geometry(f"{window_width}x{window_height}+{x}+{y}")
     
-
+        # === 左右两侧框架 ===
         self.left_frame = tk.Frame(self.root)
         self.left_frame.grid(row=0, column=0,padx=20, pady=20, sticky="nsew")
         self.right_frame = tk.Frame(self.root)
         self.right_frame.grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
-
+        # 让框架随着窗口调整大小
         self.root.rowconfigure(0, weight=1)
-
         self.root.columnconfigure(0, weight=1)
         self.root.columnconfigure(1, weight=1)
-
+        # === 左侧图片 ===
         try:
             print(os.path.join(guielements_path, "face_recognition.jpg"))
             face_img = Image.open(os.path.join(guielements_path, "face_recognition.jpg"))
@@ -58,7 +57,7 @@ class maingui:
             left_image_label = tk.Label(self.left_frame, text="图片位置", font=("Arial", 14), fg="gray")
 
         left_image_label.grid(row=0, column=0, padx=10, pady=10)
-
+        # === 右侧图片 ===
         try:
             print(os.path.join(guielements_path, "data_base.jpg"))
             da_img = Image.open(os.path.join(guielements_path, "data_base.jpg"))
@@ -69,10 +68,9 @@ class maingui:
         except Exception as e:
             # 如果图片加载失败，显示占位文字
             right_image_label = tk.Label(self.right_frame, text="图片位置", font=("Arial", 14), fg="gray")
-
         right_image_label.grid(row=0, column=0, padx=10, pady=10)
 
-        # === 按钮区域 ===
+        # === 右侧按钮区域 ===
         button_font = ("Arial", 16, "bold")
         button_width = 20
         button_height = 2
@@ -86,7 +84,7 @@ class maingui:
             height=button_height
         )
         self.db_btn.grid(row=1, column=0, padx=10, pady=10)
-
+        #=== 左侧按钮区域 ===
         self.face_btn = tk.Button(
             self.left_frame,
             text="人脸识别",
@@ -97,19 +95,20 @@ class maingui:
         )
         self.face_btn.grid(row=1, column=0, padx=10, pady=10)
 
-        
+        # 让左侧框架的控件随窗口调整大小
         self.left_frame.rowconfigure(0, weight=1)
         self.left_frame.rowconfigure(1, weight=1)
         self.left_frame.columnconfigure(0, weight=1)
+        # 让右侧框架的控件随窗口调整大小
         self.right_frame.rowconfigure(0, weight=1)
         self.right_frame.rowconfigure(1, weight=1)
         self.right_frame.columnconfigure(0, weight=1)
 
 
-       
+    # 按钮回调函数
     def database(self):
         self.database_window = databasegui.databasegui(self.root)
-
+    # 按钮回调函数
     def opencv(self):
         self.opencv_window = opencvgui.opencvgui(self.root)
 

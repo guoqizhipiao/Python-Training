@@ -22,9 +22,13 @@ class databasegui:
     
     #启动函数
     def __init__(self, maingui):
+        #线程队列
         self.data_queue = queue.SimpleQueue()
+        # 是否加载标志
         self.load_database_count = False
+        # 线程计数
         self.loading = 0
+
         self.maingui = maingui
         self.setup_ui()
         self.root.mainloop()
